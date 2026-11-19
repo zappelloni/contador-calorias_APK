@@ -1,0 +1,35 @@
+{
+  "expo": {
+    "name": "Contador de Calorias",
+    "slug": "contador-calorias",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "dark",
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.gabriel.contadorcalorias"
+    },
+    "android": {
+      "adaptiveIcon": {
+        "backgroundColor": "#08060B",
+        "foregroundImage": "./assets/android-icon-foreground.png",
+        "backgroundImage": "./assets/android-icon-background.png"
+      },
+      "package": "com.gabriel.contadorcalorias"
+    },
+    "web": {
+      "favicon": "./assets/favicon.png"
+    },
+    "backgroundColor": "#08060B",
+    "plugins": [
+      [
+        "expo-camera",
+        {
+          "cameraPermission": "Precisamos da câmera para ler o código de barras dos alimentos.",
+          "recordAudioAndroid": false
+        }
+      ]
+    ]
+  }
+}
