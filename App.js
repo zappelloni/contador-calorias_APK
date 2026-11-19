@@ -1,10 +1,11 @@
 // App de contar calorias: junta as telas e guarda os dados.
 import { useEffect, useState } from 'react';
-import { View, Text, Pressable, StyleSheet, ActivityIndicator } from 'react-native';
+import { View, Text, Pressable, StyleSheet } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import { cores } from './src/theme';
+import { cores, todasRefeicoes } from './src/theme';
+import Intro from './src/components/Intro';
 import { carregar, salvar, chaveDia, ESTADO_INICIAL } from './src/storage';
 import Hoje from './src/screens/Hoje';
 import Adicionar from './src/screens/Adicionar';
@@ -24,6 +25,9 @@ export default function App() {
   const [aba, setAba] = useState('hoje');
   const [escolhido, setEscolhido] = useState(null); // alimento aberto no ModalPorcao
   const [scanner, setScanner] = useState(false);
+  const [refeicaoAlvo, setRefeicaoAlvo] = useState(null); // refeição de onde veio o +
+  const [intro, setIntro] = useState(true);
+  const refeicoes = todasRefeicoes(estado.refeicoesExtras);
 
   useEffect(() => {
     carregar().then((e) => {
@@ -45,7 +49,26 @@ export default function App() {
       recentes: [alimento, ...e.recentes.filter((r) => r.nome !== alimento.nome)].slice(0, 10),
     }));
     setEscolhido(null);
+    setRefeicaoAlvo(null);
     setAba('hoje');
+  }
+
+  function irAdicionar(refeicaoId = null) {
+    setRefeicaoAlvo(refeicaoId);
+    setAba('adicionar');
+  }
+
+  function novaRefeicao(nome) {
+    const id = 'extra-' + Date.now();
+    setEstado((e) => ({ ...e, refeicoesExtras: [...(e.refeicoesExtras || []), { id, nome, icone: 'star-outline', extra: true }] }));
+  }
+
+  function apagarRefeicao(id) {
+    setEstado((e) => {
+      const registros = {};
+      for (const [dia, itens] of Object.entries(e.registros)) registros[dia] = itens.filter((i) => i.refeicao !== id);
+      return { ...e, registros, refeicoesExtras: (e.refeicoesExtras || []).filter((r) => r.id !== id) };
+    });
   }
 
   function removerItem(id) {
@@ -59,20 +82,16 @@ export default function App() {
     setTimeout(() => setEscolhido(produto), 400); // espera a câmera fechar
   }
 
-  if (!carregado) {
-    return (
-      <View style={[estilos.tela, { alignItems: 'center', justifyContent: 'center' }]}>
-        <ActivityIndicator color={cores.principal} size="large" />
-      </View>
-    );
+  if (intro || !carregado) {
+    return <Intro onFim={() => setIntro(false)} />;
   }
 
   return (
     <SafeAreaProvider>
       <SafeAreaView style={estilos.tela} edges={['top']}>
         <StatusBar style="light" />
-        {aba === 'hoje' && <Hoje estado={estado} onRemover={removerItem} onAdicionar={() => setAba('adicionar')} />}
-        {aba === 'adicionar' && <Adicionar estado={estado} onEscolher={setEscolhido} onEscanear={() => setScanner(true)} />}
+        {aba === 'hoje' && <Hoje estado={estado} onRemover={removerItem} onAdicionar={irAdicionar} onNovaRefeicao={novaRefeicao} onApagarRefeicao={apagarRefeicao} />}
+        {aba === 'adicionar' && <Adicionar estado={estado} onEscolher={setEscolhido} onEscanear={() => setScanner(true)} refeicaoAlvo={refeicoes.find((r) => r.id === refeicaoAlvo)} />}
         {aba === 'perfil' && <Perfil perfil={estado.perfil} onMudar={(perfil) => setEstado((e) => ({ ...e, perfil }))} />}
 
         {/* Barra de abas embaixo */}
@@ -81,7 +100,7 @@ export default function App() {
             const ativa = aba === a.id;
             if (a.id === 'adicionar') {
               return (
-                <Pressable key={a.id} onPress={() => setAba(a.id)} style={estilos.abaCentro}>
+                <Pressable key={a.id} onPress={() => irAdicionar(null)} style={estilos.abaCentro}>
                   <View style={[estilos.botaoMais, ativa && { transform: [{ scale: 1.08 }] }]}>
                     <Ionicons name="add" size={32} color={cores.sobrePrincipal} />
                   </View>
@@ -107,7 +126,13 @@ export default function App() {
           }}
           onCadastrar={cadastrarProduto}
         />
-        <ModalPorcao alimento={escolhido} onFechar={() => setEscolhido(null)} onConfirmar={(item) => adicionarItem(item, escolhido)} />
+        <ModalPorcao
+          alimento={escolhido}
+          refeicoes={refeicoes}
+          refeicaoInicial={refeicaoAlvo}
+          onFechar={() => setEscolhido(null)}
+          onConfirmar={(item) => adicionarItem(item, escolhido)}
+        />
       </SafeAreaView>
     </SafeAreaProvider>
   );

@@ -1,7 +1,7 @@
 // Leitor de código de barras: aponta a câmera, busca o produto e devolve para o app.
 // Se o produto não existir na base, o usuário cadastra uma vez e fica salvo.
-import { useRef, useState } from 'react';
-import { Modal, View, Text, Pressable, StyleSheet, ActivityIndicator, TextInput, ScrollView, KeyboardAvoidingView, Platform } from 'react-native';
+import { useEffect, useRef, useState } from 'react';
+import { Modal, View, Text, Pressable, StyleSheet, ActivityIndicator, TextInput, ScrollView, KeyboardAvoidingView, Platform, Animated, Easing } from 'react-native';
 import { CameraView, useCameraPermissions } from 'expo-camera';
 import { Ionicons } from '@expo/vector-icons';
 import { cores } from '../theme';
@@ -14,6 +14,24 @@ export default function Scanner({ visivel, meusProdutos, onFechar, onEncontrado,
   const [codigo, setCodigo] = useState('');
   const [lanterna, setLanterna] = useState(false);
   const travado = useRef(false);
+  // Tamanho real da tela da câmera (para centralizar a mira certinho)
+  const [area, setArea] = useState({ w: 0, h: 0 });
+  const mW = Math.min(area.w * 0.86, 420);
+  const mH = mW * 0.62;
+  const mX = (area.w - mW) / 2;
+  const mY = (area.h - mH) / 2;
+  // Linha da mira subindo e descendo
+  const laser = useRef(new Animated.Value(0)).current;
+  useEffect(() => {
+    const anim = Animated.loop(
+      Animated.sequence([
+        Animated.timing(laser, { toValue: 1, duration: 1100, easing: Easing.inOut(Easing.quad), useNativeDriver: true }),
+        Animated.timing(laser, { toValue: 0, duration: 1100, easing: Easing.inOut(Easing.quad), useNativeDriver: true }),
+      ])
+    );
+    anim.start();
+    return () => anim.stop();
+  }, []);
 
   function reiniciar() {
     travado.current = false;
@@ -52,8 +70,8 @@ export default function Scanner({ visivel, meusProdutos, onFechar, onEncontrado,
   }
 
   return (
-    <Modal visible={visivel} animationType="slide" onRequestClose={fechar}>
-      <View style={estilos.tela}>
+    <Modal visible={visivel} animationType="slide" onRequestClose={fechar} statusBarTranslucent navigationBarTranslucent>
+      <View style={estilos.tela} onLayout={(e) => setArea({ w: e.nativeEvent.layout.width, h: e.nativeEvent.layout.height })}>
         {!permissao ? null : !permissao.granted ? (
           <View style={estilos.centro}>
             <Ionicons name="camera-outline" size={64} color={cores.principal} />
@@ -79,27 +97,38 @@ export default function Scanner({ visivel, meusProdutos, onFechar, onEncontrado,
               barcodeScannerSettings={{ barcodeTypes: ['ean13', 'ean8', 'upc_a', 'upc_e'] }}
               onBarcodeScanned={status === 'lendo' ? aoLer : undefined}
             />
-            <View style={estilos.mascara} pointerEvents="none">
-              <View style={estilos.moldura}>
-                <View style={[estilos.canto, { top: 0, left: 0, borderTopWidth: 4, borderLeftWidth: 4 }]} />
-                <View style={[estilos.canto, { top: 0, right: 0, borderTopWidth: 4, borderRightWidth: 4 }]} />
-                <View style={[estilos.canto, { bottom: 0, left: 0, borderBottomWidth: 4, borderLeftWidth: 4 }]} />
-                <View style={[estilos.canto, { bottom: 0, right: 0, borderBottomWidth: 4, borderRightWidth: 4 }]} />
-                <View style={estilos.laser} />
+            {area.w > 0 ? (
+              <View style={StyleSheet.absoluteFill} pointerEvents="none">
+                {/* escurece tudo em volta da mira */}
+                <View style={[estilos.sombra, { top: 0, left: 0, right: 0, height: mY }]} />
+                <View style={[estilos.sombra, { top: mY + mH, left: 0, right: 0, bottom: 0 }]} />
+                <View style={[estilos.sombra, { top: mY, left: 0, width: mX, height: mH }]} />
+                <View style={[estilos.sombra, { top: mY, right: 0, width: mX, height: mH }]} />
+
+                <View style={{ position: 'absolute', left: mX, top: mY, width: mW, height: mH }}>
+                  <View style={[estilos.canto, { top: 0, left: 0, borderTopWidth: 5, borderLeftWidth: 5 }]} />
+                  <View style={[estilos.canto, { top: 0, right: 0, borderTopWidth: 5, borderRightWidth: 5 }]} />
+                  <View style={[estilos.canto, { bottom: 0, left: 0, borderBottomWidth: 5, borderLeftWidth: 5 }]} />
+                  <View style={[estilos.canto, { bottom: 0, right: 0, borderBottomWidth: 5, borderRightWidth: 5 }]} />
+                  <Animated.View
+                    style={[estilos.laser, { transform: [{ translateY: laser.interpolate({ inputRange: [0, 1], outputRange: [14, mH - 16] }) }] }]}
+                  />
+                </View>
+
+                <View style={[estilos.aviso, { top: mY + mH + 28 }]}>
+                  {status === 'buscando' ? (
+                    <>
+                      <ActivityIndicator color={cores.principal} />
+                      <Text style={estilos.avisoTxt}>Buscando {codigo}...</Text>
+                    </>
+                  ) : status === 'erro' ? (
+                    <Text style={estilos.avisoTxt}>Sem internet. Toque para tentar de novo.</Text>
+                  ) : (
+                    <Text style={estilos.avisoTxt}>Aponte para o código de barras</Text>
+                  )}
+                </View>
               </View>
-              <View style={estilos.aviso}>
-                {status === 'buscando' ? (
-                  <>
-                    <ActivityIndicator color={cores.principal} />
-                    <Text style={estilos.avisoTxt}>Buscando {codigo}...</Text>
-                  </>
-                ) : status === 'erro' ? (
-                  <Text style={estilos.avisoTxt}>Sem internet. Toque para tentar de novo.</Text>
-                ) : (
-                  <Text style={estilos.avisoTxt}>Aponte para o código de barras</Text>
-                )}
-              </View>
-            </View>
+            ) : null}
             {status === 'erro' ? <Pressable style={StyleSheet.absoluteFill} onPress={reiniciar} /> : null}
           </>
         )}
@@ -188,11 +217,10 @@ const estilos = StyleSheet.create({
   centro: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 30 },
   titulo: { color: cores.texto, fontSize: 24, fontWeight: '800', marginTop: 14 },
   texto: { color: cores.textoFraco, fontSize: 14, marginTop: 8, lineHeight: 20 },
-  mascara: { ...StyleSheet.absoluteFillObject, alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(0,0,0,0.35)' },
-  moldura: { width: 280, height: 170 },
-  canto: { position: 'absolute', width: 36, height: 36, borderColor: cores.principal, borderRadius: 6 },
-  laser: { position: 'absolute', top: '50%', left: 16, right: 16, height: 2, backgroundColor: cores.principal2, opacity: 0.9 },
-  aviso: { flexDirection: 'row', gap: 10, alignItems: 'center', marginTop: 30, backgroundColor: 'rgba(8,6,11,0.85)', paddingHorizontal: 18, paddingVertical: 12, borderRadius: 20 },
+  sombra: { position: 'absolute', backgroundColor: 'rgba(0,0,0,0.55)' },
+  canto: { position: 'absolute', width: 46, height: 46, borderColor: cores.principal, borderRadius: 6 },
+  laser: { position: 'absolute', top: 0, left: 18, right: 18, height: 3, borderRadius: 2, backgroundColor: cores.principal2, opacity: 0.9 },
+  aviso: { position: 'absolute', alignSelf: 'center', flexDirection: 'row', gap: 10, alignItems: 'center', backgroundColor: 'rgba(8,6,11,0.85)', paddingHorizontal: 18, paddingVertical: 12, borderRadius: 20 },
   avisoTxt: { color: '#fff', fontWeight: '600' },
   barraTopo: { position: 'absolute', top: 50, left: 20, right: 20, flexDirection: 'row', justifyContent: 'space-between' },
   botaoRedondo: { width: 44, height: 44, borderRadius: 22, backgroundColor: 'rgba(0,0,0,0.5)', alignItems: 'center', justifyContent: 'center' },

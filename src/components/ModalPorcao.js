@@ -1,19 +1,20 @@
 // Janela para escolher quantos gramas e em qual refeição adicionar
 import { useEffect, useState } from 'react';
-import { Modal, View, Text, TextInput, Pressable, StyleSheet, Image, KeyboardAvoidingView, Platform } from 'react-native';
+import { Modal, View, Text, TextInput, Pressable, StyleSheet, Image, KeyboardAvoidingView, Platform, ScrollView } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { cores, REFEICOES, refeicaoPelaHora } from '../theme';
 import { calcularPorcao } from '../alimentos';
 import BotaoGradiente from './BotaoGradiente';
 
-export default function ModalPorcao({ alimento, onFechar, onConfirmar }) {
+export default function ModalPorcao({ alimento, onFechar, onConfirmar, refeicaoInicial, refeicoes = REFEICOES }) {
   const [gramas, setGramas] = useState('100');
   const [refeicao, setRefeicao] = useState(refeicaoPelaHora());
 
   useEffect(() => {
     if (alimento) {
       setGramas(String(alimento.porcao || 100));
-      setRefeicao(refeicaoPelaHora());
+      // Se veio do + de uma refeição, já marca ela; senão, escolhe pela hora
+      setRefeicao(refeicaoInicial && refeicoes.some((r) => r.id === refeicaoInicial) ? refeicaoInicial : refeicaoPelaHora());
     }
   }, [alimento]);
 
@@ -55,16 +56,16 @@ export default function ModalPorcao({ alimento, onFechar, onConfirmar }) {
           </View>
 
           <Text style={estilos.rotulo}>Refeição</Text>
-          <View style={estilos.linha}>
-            {REFEICOES.map((r) => (
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8 }}>
+            {refeicoes.map((r) => (
               <Pressable key={r.id} onPress={() => setRefeicao(r.id)} style={[estilos.ref, refeicao === r.id && estilos.refAtiva]}>
                 <Ionicons name={r.icone} size={18} color={refeicao === r.id ? cores.sobrePrincipal : cores.textoFraco} />
                 <Text style={[estilos.refTxt, refeicao === r.id && { color: cores.sobrePrincipal }]} numberOfLines={1}>
-                  {r.nome.split(' ')[0]}
+                  {r.curto || r.nome.split(' ')[0]}
                 </Text>
               </Pressable>
             ))}
-          </View>
+          </ScrollView>
 
           <View style={estilos.resumo}>
             <Resumo valor={v.kcal} nome="kcal" cor={cores.principal} />
@@ -111,7 +112,7 @@ const estilos = StyleSheet.create({
   chip: { paddingHorizontal: 12, paddingVertical: 10, borderRadius: 12, backgroundColor: cores.cartao },
   chipAtivo: { backgroundColor: cores.principal },
   chipTxt: { color: cores.texto, fontWeight: '600' },
-  ref: { flex: 1, alignItems: 'center', paddingVertical: 10, borderRadius: 12, backgroundColor: cores.cartao, gap: 4 },
+  ref: { minWidth: 76, paddingHorizontal: 12, alignItems: 'center', paddingVertical: 10, borderRadius: 12, backgroundColor: cores.cartao, gap: 4 },
   refAtiva: { backgroundColor: cores.principal },
   refTxt: { color: cores.textoFraco, fontSize: 12, fontWeight: '600' },
   resumo: { flexDirection: 'row', backgroundColor: cores.cartao, borderRadius: 16, paddingVertical: 14, marginVertical: 20 },

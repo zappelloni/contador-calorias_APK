@@ -18,6 +18,7 @@ export const ESTADO_INICIAL = {
   registros: {}, // { '2026-11-19': [ { id, nome, gramas, kcal, p, c, g, refeicao } ] }
   meusProdutos: {}, // produtos cadastrados à mão, por código de barras
   recentes: [],
+  refeicoesExtras: [], // refeições criadas pelo usuário: [{ id, nome, icone }]
 };
 
 export async function carregar() {

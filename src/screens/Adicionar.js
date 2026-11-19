@@ -6,7 +6,7 @@ import { cores } from '../theme';
 import { buscarAlimentos } from '../alimentos';
 import BotaoGradiente from '../components/BotaoGradiente';
 
-export default function Adicionar({ estado, onEscolher, onEscanear }) {
+export default function Adicionar({ estado, onEscolher, onEscanear, refeicaoAlvo }) {
   const [busca, setBusca] = useState('');
   const meus = Object.values(estado.meusProdutos);
   const lista = buscarAlimentos(busca, meus);
@@ -15,6 +15,7 @@ export default function Adicionar({ estado, onEscolher, onEscanear }) {
     <View style={{ flex: 1 }}>
       <View style={estilos.topo}>
         <Text style={estilos.titulo}>Adicionar alimento</Text>
+        {refeicaoAlvo ? <Text style={estilos.alvo}>em {refeicaoAlvo.nome}</Text> : null}
         <BotaoGradiente titulo="Escanear código de barras" icone="barcode-outline" onPress={onEscanear} />
         <View style={estilos.busca}>
           <Ionicons name="search" size={18} color={cores.textoFraco} />
@@ -75,6 +76,7 @@ export default function Adicionar({ estado, onEscolher, onEscanear }) {
 const estilos = StyleSheet.create({
   topo: { padding: 20, paddingBottom: 4 },
   titulo: { color: cores.texto, fontSize: 26, fontWeight: '800', marginBottom: 16 },
+  alvo: { color: cores.principal, fontSize: 15, fontWeight: '700', marginTop: -12, marginBottom: 16 },
   busca: {
     flexDirection: 'row', alignItems: 'center', gap: 8, backgroundColor: cores.cartao, borderRadius: 14,
     paddingHorizontal: 14, marginTop: 14, borderWidth: 1, borderColor: cores.borda,

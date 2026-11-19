@@ -29,6 +29,11 @@ export const REFEICOES = [
   { id: 'jantar', nome: 'Jantar', icone: 'moon-outline' },
 ];
 
+// Junta as refeições fixas com as que o usuário criou (ex.: Ceia)
+export function todasRefeicoes(extras = []) {
+  return [...REFEICOES, ...extras];
+}
+
 // Sugere a refeição pela hora do dia
 export function refeicaoPelaHora(data = new Date()) {
   const h = data.getHours();
