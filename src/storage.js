@@ -43,8 +43,23 @@ export function chaveDia(d = new Date()) {
   return `${y}-${m}-${dia}`;
 }
 
-// Meta diária: fórmula de Mifflin-St Jeor x nível de atividade, ajustada pelo objetivo
+// Metas calculadas pelo app (ignora as manuais)
+export function calcularMetasAuto(perfil) {
+  return metasDaFormula(perfil);
+}
+
+// Metas usadas no app: se o modo manual estiver ligado, usa os valores digitados.
+// As calorias vêm dos macros: proteína e carbo = 4 kcal/g, gordura = 9 kcal/g.
 export function calcularMetas(perfil) {
+  const auto = metasDaFormula(perfil);
+  const m = perfil.metasManuais;
+  if (!m || !m.ativo) return { ...auto, manual: false };
+  const p = m.p ?? auto.p, c = m.c ?? auto.c, g = m.g ?? auto.g, f = m.f ?? auto.f;
+  return { kcal: Math.round(p * 4 + c * 4 + g * 9), p, c, f, g, tmb: auto.tmb, manual: true };
+}
+
+// Meta diária: fórmula de Mifflin-St Jeor x nível de atividade, ajustada pelo objetivo
+function metasDaFormula(perfil) {
   const { sexo, idade, peso, altura, atividade, objetivo } = perfil;
   const tmb = 10 * peso + 6.25 * altura - 5 * idade + (sexo === 'M' ? 5 : -161);
   let kcal = tmb * atividade;

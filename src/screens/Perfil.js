@@ -1,8 +1,8 @@
 // Perfil e metas: o app calcula sozinho quantas calorias comer por dia
-import { ScrollView, View, Text, TextInput, Pressable, StyleSheet } from 'react-native';
+import { ScrollView, View, Text, TextInput, Pressable, StyleSheet, Switch } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { cores, gradiente } from '../theme';
-import { calcularMetas } from '../storage';
+import { calcularMetas, calcularMetasAuto } from '../storage';
 
 const ATIVIDADES = [
   { v: 1.2, nome: 'Parado', desc: 'pouco ou nenhum exercício' },
@@ -20,6 +20,15 @@ export default function Perfil({ perfil, onMudar }) {
   const metas = calcularMetas(perfil);
   const mudar = (chave, valor) => onMudar({ ...perfil, [chave]: valor });
   const num = (t) => parseFloat(String(t).replace(',', '.')) || 0;
+  const manual = perfil.metasManuais?.ativo;
+
+  function ligarManual(ativo) {
+    // Ao ligar, começa com os valores que o app já tinha calculado
+    const base = perfil.metasManuais || calcularMetasAuto(perfil);
+    const { p, c, f, g } = { ...calcularMetasAuto(perfil), ...base };
+    mudar('metasManuais', { p, c, f, g, ativo });
+  }
+  const mudarMacro = (chave, t) => mudar('metasManuais', { ...perfil.metasManuais, [chave]: num(t) });
 
   return (
     <ScrollView contentContainerStyle={estilos.conteudo} keyboardShouldPersistTaps="handled">
@@ -31,8 +40,37 @@ export default function Perfil({ perfil, onMudar }) {
         <Text style={estilos.metaMacros}>
           Proteína {metas.p} g · Carbo {metas.c} g · Fibras {metas.f} g · Gordura {metas.g} g
         </Text>
-        <Text style={estilos.metaTmb}>Seu corpo gasta {metas.tmb} kcal só para funcionar (metabolismo basal)</Text>
+        <Text style={estilos.metaTmb}>
+          {metas.manual ? 'Meta personalizada por você' : `Seu corpo gasta ${metas.tmb} kcal só para funcionar (metabolismo basal)`}
+        </Text>
       </LinearGradient>
+
+      <View style={[estilos.cartao, { marginTop: 16 }]}>
+        <View style={estilos.linhaSwitch}>
+          <View style={{ flex: 1 }}>
+            <Text style={estilos.atvNome}>Definir macros manualmente</Text>
+            <Text style={estilos.atvDesc}>{manual ? 'Você escolhe os gramas; as calorias se ajustam sozinhas' : 'Desligado: o app calcula pelo seu perfil'}</Text>
+          </View>
+          <Switch
+            value={!!manual}
+            onValueChange={ligarManual}
+            trackColor={{ false: cores.borda, true: cores.principal2 }}
+            thumbColor={manual ? cores.principal : '#ccc'}
+          />
+        </View>
+        {manual ? (
+          <>
+            <View style={{ flexDirection: 'row', gap: 10, marginTop: 14 }}>
+              <Numero rotulo="Proteína (g)" valor={metas.p} cor={cores.proteina} onMudar={(t) => mudarMacro('p', t)} />
+              <Numero rotulo="Carbo (g)" valor={metas.c} cor={cores.carbo} onMudar={(t) => mudarMacro('c', t)} />
+            </View>
+            <View style={{ flexDirection: 'row', gap: 10, marginTop: 10 }}>
+              <Numero rotulo="Fibras (g)" valor={metas.f} cor={cores.fibra} onMudar={(t) => mudarMacro('f', t)} />
+              <Numero rotulo="Gordura (g)" valor={metas.g} cor={cores.gordura} onMudar={(t) => mudarMacro('g', t)} />
+            </View>
+          </>
+        ) : null}
+      </View>
 
       <Text style={estilos.secao}>Seus dados</Text>
       <View style={estilos.cartao}>
@@ -73,10 +111,10 @@ function Linha({ rotulo, children }) {
   );
 }
 
-function Numero({ rotulo, valor, onMudar }) {
+function Numero({ rotulo, valor, onMudar, cor }) {
   return (
     <View style={{ flex: 1 }}>
-      <Text style={estilos.rotulo}>{rotulo}</Text>
+      <Text style={[estilos.rotulo, cor && { color: cor, fontWeight: '700' }]}>{rotulo}</Text>
       <TextInput defaultValue={String(valor)} onChangeText={onMudar} keyboardType="numeric" style={estilos.entrada} selectTextOnFocus />
     </View>
   );
@@ -113,5 +151,6 @@ const estilos = StyleSheet.create({
   atividadeAtiva: { borderColor: cores.principal, backgroundColor: cores.realce },
   atvNome: { color: cores.texto, fontWeight: '700', fontSize: 15 },
   atvDesc: { color: cores.textoFraco, fontSize: 12, marginTop: 2 },
+  linhaSwitch: { flexDirection: 'row', alignItems: 'center', gap: 12 },
   nota: { color: cores.textoFraco, fontSize: 11, textAlign: 'center', marginTop: 16, opacity: 0.7 },
 });
